@@ -1,8 +1,11 @@
+using ConwaysGameOfLife.API.Configuration;
+using ConwaysGameOfLife.API.HealthChecks;
 using ConwaysGameOfLife.API.Validators;
 using ConwaysGameOfLife.Infrastructure;
 using ConwaysGameOfLife.Infrastructure.Persistence;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -12,25 +15,36 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // Configure strongly-typed settings
+        services.Configure<DatabaseSettings>(configuration.GetSection(DatabaseSettings.SectionName));
+        services.Configure<ConnectionPoolingSettings>(configuration.GetSection(ConnectionPoolingSettings.SectionName));
+        services.Configure<HealthCheckSettings>(configuration.GetSection(HealthCheckSettings.SectionName));
+        services.Configure<LoggingSettings>(configuration.GetSection(LoggingSettings.SectionName));
+
+        // Add telemetry
+        services.AddTelemetry(configuration);
+
         // Add endpoints API explorer and Swagger
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
-
-        // Configure Newtonsoft.Json for MVC/Controllers
-        services.AddControllers()
-            .AddNewtonsoftJson(options =>
-            {
-                options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-                options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
-                options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
-            });
 
         // Add FluentValidation
         services.AddValidatorsFromAssemblyContaining<UploadBoardRequestValidator>();
 
         // Add Infrastructure dependencies (repositories, services, database)
-        var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Data Source=gameoflife.db";
-        services.AddInfrastructure(connectionString);
+        var connectionString = configuration.GetConnectionString("DefaultConnection") 
+            ?? throw new InvalidOperationException("DefaultConnection connection string is required");
+        
+        services.AddInfrastructure(connectionString, configuration);
+
+        // Add Health Checks
+        services.AddScoped<DatabaseHealthCheck>();
+        services.AddHealthChecks()
+            .AddCheck<DatabaseHealthCheck>(
+                "database",
+                failureStatus: HealthStatus.Degraded,
+                tags: new[] { "db", "database", "ready" })
+            .AddCheck("api", () => HealthCheckResult.Healthy("API is running"), tags: new[] { "api", "ready" });
 
         return services;
     }
@@ -39,7 +53,30 @@ public static class ServiceCollectionExtensions
     {
         using var scope = app.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<GameOfLifeDbContext>();
-        await context.Database.EnsureCreatedAsync();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<GameOfLifeDbContext>>();
+        
+        try
+        {
+            logger.LogInformation("Ensuring database is created...");
+            
+            // Use migrations in production, EnsureCreated in development
+            if (app.Environment.IsDevelopment())
+            {
+                await context.Database.EnsureCreatedAsync();
+                logger.LogInformation("Database ensured in development mode");
+            }
+            else
+            {
+                await context.Database.MigrateAsync();
+                logger.LogInformation("Database migrated in production mode");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to ensure database is created");
+            throw;
+        }
+        
         return app;
     }
 }
