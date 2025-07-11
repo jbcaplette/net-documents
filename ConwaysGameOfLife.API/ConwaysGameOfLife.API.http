@@ -1,0 +1,85 @@
+@ConwaysGameOfLife.API_HostAddress = http://localhost:5160
+@ContentType = application/json
+
+### Health Check
+GET {{ConwaysGameOfLife.API_HostAddress}}/api/health
+Accept: {{ContentType}}
+
+###
+
+### 1. Upload Board State - Simple Blinker Pattern
+POST {{ConwaysGameOfLife.API_HostAddress}}/api/boards
+Content-Type: {{ContentType}}
+
+{
+  "aliveCells": [
+    { "x": 1, "y": 0 },
+    { "x": 1, "y": 1 },
+    { "x": 1, "y": 2 }
+  ],
+  "maxDimension": 10
+}
+
+###
+
+### 2. Upload Board State - Glider Pattern
+POST {{ConwaysGameOfLife.API_HostAddress}}/api/boards
+Content-Type: {{ContentType}}
+
+{
+  "aliveCells": [
+    { "x": 1, "y": 0 },
+    { "x": 2, "y": 1 },
+    { "x": 0, "y": 2 },
+    { "x": 1, "y": 2 },
+    { "x": 2, "y": 2 }
+  ],
+  "maxDimension": 20
+}
+
+###
+
+### 3. Get Next State (replace {boardId} with actual board ID from upload response)
+POST {{ConwaysGameOfLife.API_HostAddress}}/api/boards/{boardId}/next
+Accept: {{ContentType}}
+
+###
+
+### 4. Get N States Ahead
+POST {{ConwaysGameOfLife.API_HostAddress}}/api/boards/states-ahead
+Content-Type: {{ContentType}}
+
+{
+  "boardId": "{boardId}",
+  "generations": 5
+}
+
+###
+
+### 5. Get Final State
+POST {{ConwaysGameOfLife.API_HostAddress}}/api/boards/final-state
+Content-Type: {{ContentType}}
+
+{
+  "boardId": "{boardId}",
+  "maxIterations": 100,
+  "stableStateThreshold": 10
+}
+
+###
+
+### Example with a Block Pattern (stable)
+POST {{ConwaysGameOfLife.API_HostAddress}}/api/boards
+Content-Type: {{ContentType}}
+
+{
+  "aliveCells": [
+    { "x": 1, "y": 1 },
+    { "x": 1, "y": 2 },
+    { "x": 2, "y": 1 },
+    { "x": 2, "y": 2 }
+  ],
+  "maxDimension": 10
+}
+
+###
