@@ -125,7 +125,7 @@ public static class TelemetryExtensions
     public static IServiceCollection AddTelemetry(this IServiceCollection services, IConfiguration configuration)
     {
         // Configure telemetry settings
-        services.Configure<TelemetrySettings>(configuration.GetSection("Serilog:Telemetry"));
+        services.Configure<TelemetrySettings>(configuration.GetSection("Telemetry"));
 
         // Add custom telemetry services here if needed
         // For now, we'll rely on Serilog for telemetry
