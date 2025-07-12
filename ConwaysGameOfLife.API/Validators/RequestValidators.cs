@@ -22,7 +22,7 @@ public class UploadBoardRequestValidator : AbstractValidator<UploadBoardRequest>
             .WithMessage("All cell coordinates must be within the board boundaries (0 to MaxDimension-1)");
 
         RuleFor(x => x.AliveCells)
-            .Must(cells => cells.Count() <= 100000)
+            .Must(cells => cells == null || cells.Count() <= 100000)
             .WithMessage("Cannot have more than 100,000 alive cells for performance reasons");
     }
 

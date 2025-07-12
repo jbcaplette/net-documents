@@ -14,44 +14,67 @@ public static class DependencyInjection
         string connectionString, 
         IConfiguration? configuration = null)
     {
-        // Configure DbContext with production-ready settings and connection pooling
-        services.AddDbContextPool<GameOfLifeDbContext>(options =>
+        // Determine if we should use connection pooling (avoid in test environments)
+        var useConnectionPooling = configuration?.GetValue<bool>("Database:UseConnectionPooling") ?? true;
+        var isTestEnvironment = configuration?.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Test" ||
+                               connectionString.Contains("InMemoryDatabase", StringComparison.OrdinalIgnoreCase);
+
+        if (useConnectionPooling && !isTestEnvironment)
         {
-            options.UseSqlite(connectionString, sqliteOptions =>
+            // Configure DbContext with connection pooling for production
+            services.AddDbContextPool<GameOfLifeDbContext>(options =>
             {
-                var commandTimeout = configuration?.GetValue<int>("Database:CommandTimeout") ?? 30;
-                sqliteOptions.CommandTimeout(commandTimeout);
+                ConfigureDbContextOptions(options, connectionString, configuration);
+            }, poolSize: configuration?.GetValue<int>("ConnectionPooling:MaxPoolSize") ?? 100);
+        }
+        else
+        {
+            // Configure DbContext without pooling for testing or when explicitly disabled
+            services.AddDbContext<GameOfLifeDbContext>(options =>
+            {
+                ConfigureDbContextOptions(options, connectionString, configuration);
             });
-
-            // Configure based on settings
-            if (configuration != null)
-            {
-                var enableSensitiveDataLogging = configuration.GetValue<bool>("Database:EnableSensitiveDataLogging");
-                var enableDetailedErrors = configuration.GetValue<bool>("Database:EnableDetailedErrors");
-
-                if (enableSensitiveDataLogging)
-                {
-                    options.EnableSensitiveDataLogging();
-                }
-
-                if (enableDetailedErrors)
-                {
-                    options.EnableDetailedErrors();
-                }
-
-                // Use Serilog for EF Core logging instead of Debug.WriteLine
-                options.LogTo(message => 
-                {
-                    // This will be picked up by Serilog through the ILogger infrastructure
-                    System.Diagnostics.Debug.WriteLine(message);
-                }, LogLevel.Information);
-            }
-        }, poolSize: configuration?.GetValue<int>("ConnectionPooling:MaxPoolSize") ?? 100);
+        }
 
         services.AddScoped<IBoardRepository, BoardRepository>();
         services.AddScoped<IBoardHistoryRepository, BoardHistoryRepository>();
         services.AddScoped<IBoardService, BoardService>();
 
         return services;
+    }
+
+    private static void ConfigureDbContextOptions(DbContextOptionsBuilder options, 
+        string connectionString, 
+        IConfiguration? configuration)
+    {
+        options.UseSqlite(connectionString, sqliteOptions =>
+        {
+            var commandTimeout = configuration?.GetValue<int>("Database:CommandTimeout") ?? 30;
+            sqliteOptions.CommandTimeout(commandTimeout);
+        });
+
+        // Configure based on settings
+        if (configuration != null)
+        {
+            var enableSensitiveDataLogging = configuration.GetValue<bool>("Database:EnableSensitiveDataLogging");
+            var enableDetailedErrors = configuration.GetValue<bool>("Database:EnableDetailedErrors");
+
+            if (enableSensitiveDataLogging)
+            {
+                options.EnableSensitiveDataLogging();
+            }
+
+            if (enableDetailedErrors)
+            {
+                options.EnableDetailedErrors();
+            }
+
+            // Use Serilog for EF Core logging instead of Debug.WriteLine
+            options.LogTo(message => 
+            {
+                // This will be picked up by Serilog through the ILogger infrastructure
+                System.Diagnostics.Debug.WriteLine(message);
+            }, LogLevel.Information);
+        }
     }
 }

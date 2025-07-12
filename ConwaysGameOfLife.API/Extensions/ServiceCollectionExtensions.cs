@@ -1,5 +1,6 @@
 using ConwaysGameOfLife.API.Configuration;
 using ConwaysGameOfLife.API.HealthChecks;
+using ConwaysGameOfLife.API.Services;
 using ConwaysGameOfLife.API.Validators;
 using ConwaysGameOfLife.Infrastructure;
 using ConwaysGameOfLife.Infrastructure.Persistence;
@@ -47,36 +48,5 @@ public static class ServiceCollectionExtensions
             .AddCheck("api", () => HealthCheckResult.Healthy("API is running"), tags: new[] { "api", "ready" });
 
         return services;
-    }
-
-    public static async Task<WebApplication> EnsureDatabaseCreated(this WebApplication app)
-    {
-        using var scope = app.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<GameOfLifeDbContext>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<GameOfLifeDbContext>>();
-        
-        try
-        {
-            logger.LogInformation("Ensuring database is created...");
-            
-            // Use migrations in production, EnsureCreated in development
-            if (app.Environment.IsDevelopment())
-            {
-                await context.Database.EnsureCreatedAsync();
-                logger.LogInformation("Database ensured in development mode");
-            }
-            else
-            {
-                await context.Database.MigrateAsync();
-                logger.LogInformation("Database migrated in production mode");
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to ensure database is created");
-            throw;
-        }
-        
-        return app;
     }
 }
