@@ -5,10 +5,7 @@ using ConwaysGameOfLife.API.Validators;
 using ConwaysGameOfLife.Domain.Services;
 using ConwaysGameOfLife.Domain.ValueObjects;
 using FluentValidation;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using System.Text.Json;
 
 namespace ConwaysGameOfLife.API.Extensions;
 
@@ -177,71 +174,5 @@ public static class EndpointExtensions
         .Produces<BoardResponse>(StatusCodes.Status200OK)
         .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
         .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
-    }
-
-    public static void MapHealthEndpoints(this IEndpointRouteBuilder app)
-    {
-        // Basic health check endpoint
-        app.MapHealthChecks("/health", new HealthCheckOptions
-        {
-            ResponseWriter = async (context, report) =>
-            {
-                var response = new
-                {
-                    status = report.Status.ToString(),
-                    checks = report.Entries.Select(entry => new
-                    {
-                        name = entry.Key,
-                        status = entry.Value.Status.ToString(),
-                        description = entry.Value.Description,
-                        duration = entry.Value.Duration.TotalMilliseconds,
-                        exception = entry.Value.Exception?.Message,
-                        data = entry.Value.Data
-                    }),
-                    totalDuration = report.TotalDuration.TotalMilliseconds,
-                    timestamp = DateTime.UtcNow
-                };
-
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsync(JsonSerializer.Serialize(response, new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    WriteIndented = true
-                }));
-            }
-        })
-        .WithName("HealthCheck")
-        .WithOpenApi(operation => new(operation)
-        {
-            Summary = "Health check endpoint",
-            Description = "Returns the health status of the API and its dependencies including database connectivity."
-        });
-
-        // Detailed health check endpoint for monitoring tools
-        app.MapHealthChecks("/health/ready", new HealthCheckOptions
-        {
-            Predicate = check => check.Tags.Contains("ready"),
-            ResponseWriter = async (context, report) =>
-            {
-                var response = new
-                {
-                    status = report.Status.ToString(),
-                    timestamp = DateTime.UtcNow
-                };
-
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsync(JsonSerializer.Serialize(response));
-            }
-        })
-        .WithName("ReadinessCheck")
-        .WithOpenApi();
-
-        // Liveness check endpoint (simple ping)
-        app.MapHealthChecks("/health/live", new HealthCheckOptions
-        {
-            Predicate = _ => false, // Exclude all checks, just return healthy if the service is up
-        })
-        .WithName("LivenessCheck")
-        .WithOpenApi();
     }
 }

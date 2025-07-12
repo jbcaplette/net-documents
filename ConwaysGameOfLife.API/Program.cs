@@ -37,7 +37,6 @@ public class Program
 
             // Map API endpoints
             app.MapBoardEndpoints();
-            app.MapHealthEndpoints();
 
             Log.Information("Conway's Game of Life API configured successfully");
             

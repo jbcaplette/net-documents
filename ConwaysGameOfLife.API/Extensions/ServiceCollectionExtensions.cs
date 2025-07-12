@@ -1,12 +1,10 @@
 using ConwaysGameOfLife.API.Configuration;
-using ConwaysGameOfLife.API.HealthChecks;
 using ConwaysGameOfLife.API.Services;
 using ConwaysGameOfLife.API.Validators;
 using ConwaysGameOfLife.Infrastructure;
 using ConwaysGameOfLife.Infrastructure.Persistence;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -37,15 +35,6 @@ public static class ServiceCollectionExtensions
             ?? throw new InvalidOperationException("DefaultConnection connection string is required");
         
         services.AddInfrastructure(connectionString, configuration);
-
-        // Add Health Checks
-        services.AddScoped<DatabaseHealthCheck>();
-        services.AddHealthChecks()
-            .AddCheck<DatabaseHealthCheck>(
-                "database",
-                failureStatus: HealthStatus.Degraded,
-                tags: new[] { "db", "database", "ready" })
-            .AddCheck("api", () => HealthCheckResult.Healthy("API is running"), tags: new[] { "api", "ready" });
 
         return services;
     }
