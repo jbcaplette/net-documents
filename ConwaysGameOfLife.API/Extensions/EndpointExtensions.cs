@@ -59,20 +59,27 @@ public static class EndpointExtensions
             Description = "Creates a new Conway's Game of Life board with the specified alive cells and returns a unique board ID."
         })
         .Produces<BoardResponse>(StatusCodes.Status201Created)
-        .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
+        .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+        .Produces<ErrorResponse>(StatusCodes.Status500InternalServerError);
 
         // 2. Get Next State
         boardGroup.MapPost("{boardId:guid}/next", async (
             Guid boardId,
             IBoardService boardService,
+            IValidator<GetNextStateRequest> validator,
             ILogger<IBoardService> logger) =>
         {
             var correlationId = System.Diagnostics.Activity.Current?.Id ?? Guid.NewGuid().ToString();
             
             try
             {
+                var request = new GetNextStateRequest { BoardId = boardId };
+                
                 logger.LogInformation("Getting next state for board {BoardId}. CorrelationId: {CorrelationId}", 
                     boardId, correlationId);
+
+                var validationError = await ErrorHandling.ValidateRequest(request, validator);
+                if (validationError != null) return validationError;
 
                 var board = await boardService.GetNextStateAsync(new BoardId(boardId));
                 var response = board.ToResponse();
@@ -94,7 +101,9 @@ public static class EndpointExtensions
             Description = "Returns the board state after one generation given a board ID."
         })
         .Produces<BoardResponse>(StatusCodes.Status200OK)
-        .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+        .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+        .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
+        .Produces<ErrorResponse>(StatusCodes.Status500InternalServerError);
 
         // 3. Get N States Ahead
         boardGroup.MapPost("states-ahead", async (
@@ -136,7 +145,8 @@ public static class EndpointExtensions
         })
         .Produces<BoardResponse>(StatusCodes.Status200OK)
         .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-        .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+        .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
+        .Produces<ErrorResponse>(StatusCodes.Status500InternalServerError);
 
         // 4. Get Final State
         boardGroup.MapPost("final-state", async (
@@ -184,6 +194,7 @@ public static class EndpointExtensions
         })
         .Produces<BoardResponse>(StatusCodes.Status200OK)
         .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-        .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+        .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
+        .Produces<ErrorResponse>(StatusCodes.Status500InternalServerError);
     }
 }

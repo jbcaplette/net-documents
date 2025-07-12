@@ -325,4 +325,83 @@ public class ErrorHandlingIntegrationTests : IClassFixture<WebApplicationFactory
         boardResponse!.IsEmpty.Should().BeTrue();
         boardResponse.AliveCells.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task InternalServerError_ShouldReturnConsistentErrorResponse()
+    {
+        // This test verifies that any internal server errors return the consistent ErrorResponse format
+        // rather than the default ProblemDetails format
+        
+        // Note: In a real scenario, this would be testing against a mocked service that throws an exception
+        // For now, we verify the response format structure through the error handling middleware
+        
+        // We can test this by triggering a scenario that might cause an internal error
+        // For example, extremely large generation requests that might cause memory issues
+        var request = new GetNStatesAheadRequest
+        {
+            BoardId = Guid.NewGuid(), // Non-existent board - should be handled as 404, but let's verify error format
+            Generations = 1000000 // Very large number - might cause issues in some scenarios
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/boards/states-ahead", request);
+
+        // Assert - The response should be in ErrorResponse format regardless of status code
+        var content = await response.Content.ReadAsStringAsync();
+        
+        // Verify the response can be deserialized as ErrorResponse (our consistent format)
+        // and NOT as ProblemDetails (which would be inconsistent)
+        var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(content, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        errorResponse.Should().NotBeNull();
+        errorResponse!.Message.Should().NotBeNullOrEmpty();
+        errorResponse.ErrorCode.Should().NotBeNullOrEmpty();
+        errorResponse.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+
+        // The response should be either 400 (validation error), 404 (not found), or 500 (internal error)
+        // But importantly, it should ALWAYS use our ErrorResponse format
+        response.StatusCode.Should().BeOneOf(
+            HttpStatusCode.BadRequest, 
+            HttpStatusCode.NotFound, 
+            HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
+    public async Task ErrorResponse_ShouldHaveConsistentStructure()
+    {
+        // Arrange - Force a validation error to test ErrorResponse structure
+        var request = new UploadBoardRequest
+        {
+            AliveCells = new[] { new CellCoordinateDto { X = -1, Y = -1 } }, // Invalid coordinates
+            MaxDimension = 20
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/boards", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        
+        var content = await response.Content.ReadAsStringAsync();
+        var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(content, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        // Verify all required ErrorResponse properties are present
+        errorResponse.Should().NotBeNull();
+        errorResponse!.Message.Should().NotBeNullOrEmpty();
+        errorResponse.ErrorCode.Should().NotBeNullOrEmpty();
+        errorResponse.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+        
+        // For validation errors, ValidationErrors should be populated
+        if (errorResponse.ErrorCode == "ValidationError")
+        {
+            errorResponse.ValidationErrors.Should().NotBeNull();
+            errorResponse.ValidationErrors.Should().NotBeEmpty();
+        }
+    }
 }

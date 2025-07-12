@@ -57,6 +57,16 @@ public class GetNStatesAheadRequestValidator : AbstractValidator<GetNStatesAhead
     }
 }
 
+public class GetNextStateRequestValidator : AbstractValidator<GetNextStateRequest>
+{
+    public GetNextStateRequestValidator()
+    {
+        RuleFor(x => x.BoardId)
+            .NotEmpty()
+            .WithMessage("Board ID cannot be empty");
+    }
+}
+
 public class GetFinalStateRequestValidator : AbstractValidator<GetFinalStateRequest>
 {
     private readonly GameOfLifeSettings _settings;

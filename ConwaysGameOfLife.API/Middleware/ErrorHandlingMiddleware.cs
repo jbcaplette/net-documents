@@ -23,7 +23,7 @@ public static class ErrorHandling
         {
             ArgumentException argEx => LogAndReturnBadRequest(argEx, errorResponse, logger, correlationId),
             InvalidOperationException invOpEx => LogAndReturnNotFound(invOpEx, errorResponse, logger, correlationId),
-            _ => LogAndReturnProblem(ex, logger, correlationId)
+            _ => LogAndReturnInternalServerError(ex, errorResponse, logger, correlationId)
         };
     }
 
@@ -39,10 +39,10 @@ public static class ErrorHandling
         return Results.NotFound(errorResponse);
     }
 
-    private static IResult LogAndReturnProblem(Exception ex, ILogger? logger, string correlationId)
+    private static IResult LogAndReturnInternalServerError(Exception ex, ErrorResponse errorResponse, ILogger? logger, string correlationId)
     {
         logger?.LogError(ex, "Unhandled exception occurred. CorrelationId: {CorrelationId}", correlationId);
-        return Results.Problem(detail: ex.Message, title: "An error occurred");
+        return Results.Json(errorResponse, statusCode: 500);
     }
 
     public static async Task<IResult?> ValidateRequest<T>(T request, IValidator<T> validator, ILogger? logger = null)
