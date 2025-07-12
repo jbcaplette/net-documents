@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ConwaysGameOfLife.API.Services;
 
-public class DatabaseInitializationService : IHostedService
+public class DatabaseInitializationService : IDatabaseInitializationService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<DatabaseInitializationService> _logger;
@@ -20,7 +20,7 @@ public class DatabaseInitializationService : IHostedService
         _environmentService = environmentService;
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         using var scope = _serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<GameOfLifeDbContext>();
@@ -46,10 +46,5 @@ public class DatabaseInitializationService : IHostedService
             _logger.LogError(ex, "Failed to ensure database is created");
             throw;
         }
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
     }
 }

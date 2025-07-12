@@ -8,6 +8,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ConwaysGameOfLife.API;
+using ConwaysGameOfLife.Domain.Services;
+using ConwaysGameOfLife.Tests.TestHelpers;
 
 namespace ConwaysGameOfLife.Tests.Integration;
 
@@ -25,6 +27,16 @@ public class FunctionalRequirementsTests : IClassFixture<WebApplicationFactory<P
         {
             builder.ConfigureServices(services =>
             {
+                // Remove the existing environment service and add a test one
+                var environmentServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IEnvironmentService));
+                if (environmentServiceDescriptor != null)
+                {
+                    services.Remove(environmentServiceDescriptor);
+                }
+                
+                // Add test environment service that returns IsTest = true
+                services.AddSingleton<IEnvironmentService>(new TestEnvironmentService());
+                
                 // Add in-memory database for testing
                 services.AddDbContext<GameOfLifeDbContext>(options =>
                 {

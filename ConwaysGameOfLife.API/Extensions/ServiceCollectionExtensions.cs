@@ -1,5 +1,6 @@
 using ConwaysGameOfLife.API.Configuration;
 using ConwaysGameOfLife.Domain.Configuration;
+using ConwaysGameOfLife.Domain.Services;
 using ConwaysGameOfLife.API.Services;
 using ConwaysGameOfLife.API.Validators;
 using ConwaysGameOfLife.Infrastructure;
@@ -36,8 +37,9 @@ public static class ServiceCollectionExtensions
         
         services.AddInfrastructure(connectionString, configuration);
 
-        // Add database initialization service
-        services.AddHostedService<DatabaseInitializationService>();
+        // Add database initialization service as scoped service (not hosted)
+        // This allows us to call it manually after app is built
+        services.AddScoped<IDatabaseInitializationService, DatabaseInitializationService>();
 
         return services;
     }

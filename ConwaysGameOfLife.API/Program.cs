@@ -5,7 +5,7 @@ namespace ConwaysGameOfLife.API;
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         // Configure Serilog early to capture startup logs
         var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +33,8 @@ public class Program
 
             var app = builder.Build();
 
+            // Initialize database conditionally
+            await app.InitializeDatabaseAsync();
             // Configure request logging
             app.ConfigureRequestLogging();
 
