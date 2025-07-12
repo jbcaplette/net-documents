@@ -17,16 +17,28 @@ public class Program
         {
             Log.Information("Starting Conway's Game of Life API");
             
+            // Cache the development environment check to ensure consistency
+            var isDevelopment = builder.Environment.IsDevelopment();
+            
             // Add services to the container
             builder.Services.AddApiServices(builder.Configuration);
+
+            // Add Swagger services only in development
+            // Note: Services must be registered before building the application
+            if (isDevelopment)
+            {
+                builder.Services.AddSwaggerServices();
+                Log.Information("Swagger services registered for development environment");
+            }
 
             var app = builder.Build();
 
             // Configure request logging
             app.ConfigureRequestLogging();
 
-            // Configure the HTTP request pipeline
-            if (app.Environment.IsDevelopment())
+            // Configure Swagger middleware in the HTTP request pipeline
+            // Note: Middleware must be configured after building the application
+            if (isDevelopment)
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();

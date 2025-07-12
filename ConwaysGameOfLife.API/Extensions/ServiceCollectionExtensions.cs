@@ -27,10 +27,6 @@ public static class ServiceCollectionExtensions
         // Add telemetry
         services.AddTelemetry(configuration);
 
-        // Add endpoints API explorer and Swagger
-        services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen();
-
         // Add FluentValidation
         services.AddValidatorsFromAssemblyContaining<UploadBoardRequestValidator>();
 
@@ -40,6 +36,15 @@ public static class ServiceCollectionExtensions
         
         services.AddInfrastructure(connectionString, configuration);
 
+        return services;
+    }
+
+    public static IServiceCollection AddSwaggerServices(this IServiceCollection services)
+    {
+        // Add endpoints API explorer and Swagger for development
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen();
+        
         return services;
     }
 }
