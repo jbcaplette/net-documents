@@ -35,6 +35,12 @@ public class Board
 
     // Internal constructor for creating next generation while preserving CreatedAt
     internal Board(BoardId id, IEnumerable<CellCoordinate> aliveCells, int maxDimension, int generation, DateTime createdAt)
+        : this(id, aliveCells, maxDimension, generation, createdAt, DateTime.UtcNow)
+    {
+    }
+
+    // Private constructor for full reconstruction from persistence
+    private Board(BoardId id, IEnumerable<CellCoordinate> aliveCells, int maxDimension, int generation, DateTime createdAt, DateTime lastUpdatedAt)
     {
         if (maxDimension <= 0)
             throw new ArgumentException("Max dimension must be positive", nameof(maxDimension));
@@ -43,7 +49,7 @@ public class Board
         MaxDimension = maxDimension;
         Generation = generation;
         CreatedAt = createdAt;
-        LastUpdatedAt = DateTime.UtcNow;
+        LastUpdatedAt = lastUpdatedAt;
         
         _aliveCells = new HashSet<CellCoordinate>();
         
@@ -52,6 +58,21 @@ public class Board
             ValidateCoordinate(cell);
             _aliveCells.Add(cell);
         }
+    }
+
+    /// <summary>
+    /// Factory method for reconstructing a Board from persistence.
+    /// This preserves the original CreatedAt and LastUpdatedAt timestamps.
+    /// </summary>
+    public static Board FromPersistence(
+        BoardId id, 
+        IEnumerable<CellCoordinate> aliveCells, 
+        int maxDimension, 
+        int generation, 
+        DateTime createdAt, 
+        DateTime lastUpdatedAt)
+    {
+        return new Board(id, aliveCells, maxDimension, generation, createdAt, lastUpdatedAt);
     }
 
     public Board NextGeneration()

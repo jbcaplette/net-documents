@@ -22,24 +22,14 @@ public class BoardRepository : IBoardRepository
 
         if (entity == null) return null;
 
-        // Use reflection to access the internal constructor to preserve CreatedAt time
-        var constructor = typeof(Board).GetConstructor(
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-            null,
-            new[] { typeof(BoardId), typeof(IEnumerable<CellCoordinate>), typeof(int), typeof(int), typeof(DateTime) },
-            null);
-
-        if (constructor == null)
-            throw new InvalidOperationException("Could not find internal Board constructor");
-
-        return (Board)constructor.Invoke(new object[] 
-        { 
+        // Use factory method to reconstruct Board from persistence
+        return Board.FromPersistence(
             entity.Id, 
             entity.GetAliveCells(), 
             entity.MaxDimension, 
             entity.Generation, 
-            entity.CreatedAt 
-        });
+            entity.CreatedAt,
+            entity.LastUpdatedAt);
     }
 
     public async Task SaveAsync(Board board)
