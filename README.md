@@ -43,6 +43,7 @@ This API provides a complete implementation of Conway's Game of Life cellular au
    ```bash
    dotnet run --project ConwaysGameOfLife.API
    ```
+   *Note: The database will be automatically created and initialized on first startup if it doesn't exist*
 
 4. **Access Swagger UI** (Development only)
    ```
