@@ -17,7 +17,6 @@ public static class ServiceCollectionExtensions
         // Configure strongly-typed settings
         services.Configure<DatabaseSettings>(configuration.GetSection(DatabaseSettings.SectionName));
         services.Configure<ConnectionPoolingSettings>(configuration.GetSection(ConnectionPoolingSettings.SectionName));
-        services.Configure<HealthCheckSettings>(configuration.GetSection(HealthCheckSettings.SectionName));
         services.Configure<LoggingSettings>(configuration.GetSection(LoggingSettings.SectionName));
 
         // Add telemetry

@@ -290,19 +290,6 @@ public class ErrorHandlingIntegrationTests : IClassFixture<WebApplicationFactory
     }
 
     [Fact]
-    public async Task HealthCheck_ShouldAlwaysReturnHealthStatus()
-    {
-        // Act
-        var response = await _client.GetAsync("/health");
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        
-        var content = await response.Content.ReadAsStringAsync();
-        content.Should().NotBeNullOrEmpty();
-    }
-
-    [Fact]
     public async Task NonExistentEndpoint_ShouldReturnNotFound()
     {
         // Act

@@ -1,12 +1,6 @@
 @ConwaysGameOfLife.API_HostAddress = http://localhost:5160
 @ContentType = application/json
 
-### Health Check
-GET {{ConwaysGameOfLife.API_HostAddress}}/api/health
-Accept: {{ContentType}}
-
-###
-
 ### 1. Upload Board State - Simple Blinker Pattern
 POST {{ConwaysGameOfLife.API_HostAddress}}/api/boards
 Content-Type: {{ContentType}}

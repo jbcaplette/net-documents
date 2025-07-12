@@ -396,25 +396,6 @@ public class FunctionalRequirementsTests : IClassFixture<WebApplicationFactory<P
     }
 
     [Fact]
-    public async Task NonFunctionalRequirement_ProductionReadiness_HealthChecksAndLogging()
-    {
-        // Test health check endpoint
-        var healthResponse = await _client.GetAsync("/health");
-        healthResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        
-        var healthContent = await healthResponse.Content.ReadAsStringAsync();
-        healthContent.Should().Contain("status");
-
-        // Test readiness check
-        var readinessResponse = await _client.GetAsync("/health/ready");
-        readinessResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        // Test liveness check
-        var livenessResponse = await _client.GetAsync("/health/live");
-        livenessResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
     public async Task FullWorkflow_AllRequirements_EndToEndScenario()
     {
         // This test validates the complete workflow covering all functional requirements

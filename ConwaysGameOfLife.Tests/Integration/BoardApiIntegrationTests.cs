@@ -325,19 +325,6 @@ public class BoardApiIntegrationTests : IClassFixture<WebApplicationFactory<Prog
     }
 
     [Fact]
-    public async Task HealthCheck_ShouldReturnHealthy()
-    {
-        // Act
-        var response = await _client.GetAsync("/health");
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        
-        var content = await response.Content.ReadAsStringAsync();
-        content.Should().Contain("Healthy");
-    }
-
-    [Fact]
     public async Task FullWorkflow_CreateBoardAndEvolveThroughGenerations_ShouldWork()
     {
         // Arrange - Create a blinker pattern

@@ -23,18 +23,6 @@ public class ConnectionPoolingSettings
     public int ConnectionIdleTimeout { get; set; } = 30; // seconds
 }
 
-public class HealthCheckSettings
-{
-    public const string SectionName = "HealthChecks";
-    
-    public DatabaseHealthCheckSettings Database { get; set; } = new();
-}
-
-public class DatabaseHealthCheckSettings
-{
-    public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
-}
-
 public class LoggingSettings
 {
     public const string SectionName = "Serilog";
@@ -59,5 +47,5 @@ public class TelemetrySettings
     public bool EnablePerformanceLogging { get; set; } = true;
     public bool LogRequestBody { get; set; } = false;
     public bool LogResponseBody { get; set; } = false;
-    public string[] ExcludedPaths { get; set; } = ["/health", "/health/live", "/health/ready"];
+    public string[] ExcludedPaths { get; set; } = [];
 }
