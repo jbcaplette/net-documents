@@ -13,7 +13,7 @@ public class Board
     public DateTime LastUpdatedAt { get; private set; }
     public int MaxDimension { get; private set; }
 
-    public Board(BoardId id, IEnumerable<CellCoordinate> aliveCells, int maxDimension = 1000, int generation = 0)
+    public Board(BoardId id, IEnumerable<CellCoordinate> aliveCells, int maxDimension, int generation = 0)
     {
         if (maxDimension <= 0)
             throw new ArgumentException("Max dimension must be positive", nameof(maxDimension));

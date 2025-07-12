@@ -1,15 +1,33 @@
 using ConwaysGameOfLife.API.Models;
 using ConwaysGameOfLife.API.Validators;
+using ConwaysGameOfLife.Domain.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace ConwaysGameOfLife.Tests.API.Validators;
 
 public class RequestValidatorsTests
 {
+    private readonly Mock<IOptions<GameOfLifeSettings>> _mockSettings;
+    
+    public RequestValidatorsTests()
+    {
+        _mockSettings = new Mock<IOptions<GameOfLifeSettings>>();
+        _mockSettings.Setup(x => x.Value).Returns(new GameOfLifeSettings
+        {
+            DefaultMaxDimension = 1000,
+            DefaultMaxIterations = 1000,
+            DefaultStableStateThreshold = 20,
+            ProgressLoggingInterval = 100,
+            MaxCycleDetectionLength = 10,
+            CycleStabilityRequirement = 3
+        });
+    }
+
     [Fact]
     public void UploadBoardRequestValidator_WithValidRequest_ShouldPassValidation()
     {
         // Arrange
-        var validator = new UploadBoardRequestValidator();
+        var validator = new UploadBoardRequestValidator(_mockSettings.Object);
         var request = new UploadBoardRequest
         {
             AliveCells = new[]
@@ -32,7 +50,7 @@ public class RequestValidatorsTests
     public void UploadBoardRequestValidator_WithNullAliveCells_ShouldFailValidation()
     {
         // Arrange
-        var validator = new UploadBoardRequestValidator();
+        var validator = new UploadBoardRequestValidator(_mockSettings.Object);
         var request = new UploadBoardRequest
         {
             AliveCells = null!,
@@ -54,7 +72,7 @@ public class RequestValidatorsTests
     public void UploadBoardRequestValidator_WithInvalidMaxDimension_ShouldFailValidation(int invalidMaxDimension)
     {
         // Arrange
-        var validator = new UploadBoardRequestValidator();
+        var validator = new UploadBoardRequestValidator(_mockSettings.Object);
         var request = new UploadBoardRequest
         {
             AliveCells = new[] { new CellCoordinateDto { X = 1, Y = 1 } },
@@ -73,7 +91,7 @@ public class RequestValidatorsTests
     public void UploadBoardRequestValidator_WithTooLargeMaxDimension_ShouldFailValidation()
     {
         // Arrange
-        var validator = new UploadBoardRequestValidator();
+        var validator = new UploadBoardRequestValidator(_mockSettings.Object);
         var request = new UploadBoardRequest
         {
             AliveCells = new[] { new CellCoordinateDto { X = 1, Y = 1 } },
@@ -92,7 +110,7 @@ public class RequestValidatorsTests
     public void UploadBoardRequestValidator_WithCellsOutsideBoundary_ShouldFailValidation()
     {
         // Arrange
-        var validator = new UploadBoardRequestValidator();
+        var validator = new UploadBoardRequestValidator(_mockSettings.Object);
         var request = new UploadBoardRequest
         {
             AliveCells = new[]
@@ -115,7 +133,7 @@ public class RequestValidatorsTests
     public void UploadBoardRequestValidator_WithTooManyAliveCells_ShouldFailValidation()
     {
         // Arrange
-        var validator = new UploadBoardRequestValidator();
+        var validator = new UploadBoardRequestValidator(_mockSettings.Object);
         var aliveCells = Enumerable.Range(0, 100001) // Exceeds limit of 100,000
             .Select(i => new CellCoordinateDto { X = i % 1000, Y = i / 1000 });
         
@@ -131,6 +149,28 @@ public class RequestValidatorsTests
         // Assert
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Cannot have more than 100,000 alive cells"));
+    }
+
+    [Fact]
+    public void UploadBoardRequestValidator_WithNullMaxDimension_ShouldUseDefaultFromSettings()
+    {
+        // Arrange
+        var validator = new UploadBoardRequestValidator(_mockSettings.Object);
+        var request = new UploadBoardRequest
+        {
+            AliveCells = new[]
+            {
+                new CellCoordinateDto { X = 1, Y = 1 },
+                new CellCoordinateDto { X = 999, Y = 999 } // Should be valid with default dimension 1000
+            },
+            MaxDimension = null
+        };
+
+        // Act
+        var result = validator.Validate(request);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
     }
 
     [Fact]
@@ -214,7 +254,7 @@ public class RequestValidatorsTests
     public void GetFinalStateRequestValidator_WithValidRequest_ShouldPassValidation()
     {
         // Arrange
-        var validator = new GetFinalStateRequestValidator();
+        var validator = new GetFinalStateRequestValidator(_mockSettings.Object);
         var request = new GetFinalStateRequest
         {
             BoardId = Guid.NewGuid(),
@@ -233,7 +273,7 @@ public class RequestValidatorsTests
     public void GetFinalStateRequestValidator_WithEmptyBoardId_ShouldFailValidation()
     {
         // Arrange
-        var validator = new GetFinalStateRequestValidator();
+        var validator = new GetFinalStateRequestValidator(_mockSettings.Object);
         var request = new GetFinalStateRequest
         {
             BoardId = Guid.Empty,
@@ -256,7 +296,7 @@ public class RequestValidatorsTests
     public void GetFinalStateRequestValidator_WithInvalidMaxIterations_ShouldFailValidation(int invalidMaxIterations)
     {
         // Arrange
-        var validator = new GetFinalStateRequestValidator();
+        var validator = new GetFinalStateRequestValidator(_mockSettings.Object);
         var request = new GetFinalStateRequest
         {
             BoardId = Guid.NewGuid(),
@@ -276,7 +316,7 @@ public class RequestValidatorsTests
     public void GetFinalStateRequestValidator_WithTooManyMaxIterations_ShouldFailValidation()
     {
         // Arrange
-        var validator = new GetFinalStateRequestValidator();
+        var validator = new GetFinalStateRequestValidator(_mockSettings.Object);
         var request = new GetFinalStateRequest
         {
             BoardId = Guid.NewGuid(),
@@ -299,7 +339,7 @@ public class RequestValidatorsTests
     public void GetFinalStateRequestValidator_WithInvalidStableStateThreshold_ShouldFailValidation(int invalidThreshold)
     {
         // Arrange
-        var validator = new GetFinalStateRequestValidator();
+        var validator = new GetFinalStateRequestValidator(_mockSettings.Object);
         var request = new GetFinalStateRequest
         {
             BoardId = Guid.NewGuid(),
@@ -319,7 +359,7 @@ public class RequestValidatorsTests
     public void GetFinalStateRequestValidator_WithTooLargeStableStateThreshold_ShouldFailValidation()
     {
         // Arrange
-        var validator = new GetFinalStateRequestValidator();
+        var validator = new GetFinalStateRequestValidator(_mockSettings.Object);
         var request = new GetFinalStateRequest
         {
             BoardId = Guid.NewGuid(),
@@ -333,5 +373,24 @@ public class RequestValidatorsTests
         // Assert
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Stable state threshold cannot exceed 1,000"));
+    }
+
+    [Fact]
+    public void GetFinalStateRequestValidator_WithNullValues_ShouldUseDefaultsFromSettings()
+    {
+        // Arrange
+        var validator = new GetFinalStateRequestValidator(_mockSettings.Object);
+        var request = new GetFinalStateRequest
+        {
+            BoardId = Guid.NewGuid(),
+            MaxIterations = null,
+            StableStateThreshold = null
+        };
+
+        // Act
+        var result = validator.Validate(request);
+
+        // Assert
+        result.IsValid.Should().BeTrue(); // Should pass validation using defaults
     }
 }

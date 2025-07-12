@@ -2,10 +2,12 @@ using ConwaysGameOfLife.API.Mappers;
 using ConwaysGameOfLife.API.Middleware;
 using ConwaysGameOfLife.API.Models;
 using ConwaysGameOfLife.API.Validators;
+using ConwaysGameOfLife.Domain.Configuration;
 using ConwaysGameOfLife.Domain.Services;
 using ConwaysGameOfLife.Domain.ValueObjects;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace ConwaysGameOfLife.API.Extensions;
 
@@ -20,20 +22,24 @@ public static class EndpointExtensions
             [FromBody] UploadBoardRequest request,
             IBoardService boardService,
             IValidator<UploadBoardRequest> validator,
-            ILogger<IBoardService> logger) =>
+            ILogger<IBoardService> logger,
+            IOptions<GameOfLifeSettings> gameSettings) =>
         {
             var correlationId = System.Diagnostics.Activity.Current?.Id ?? Guid.NewGuid().ToString();
+            var settings = gameSettings.Value;
             
             try
             {
+                var maxDimension = request.MaxDimension ?? settings.DefaultMaxDimension;
+                
                 logger.LogInformation("Creating new board with {AliveCellCount} alive cells and max dimension {MaxDimension}. CorrelationId: {CorrelationId}", 
-                    request.AliveCells.Count(), request.MaxDimension, correlationId);
+                    request.AliveCells.Count(), maxDimension, correlationId);
 
                 var validationError = await ErrorHandling.ValidateRequest(request, validator);
                 if (validationError != null) return validationError;
 
                 var coordinates = request.AliveCells.ToCoordinates();
-                var board = await boardService.CreateBoardAsync(coordinates, request.MaxDimension);
+                var board = await boardService.CreateBoardAsync(coordinates, maxDimension);
                 var response = board.ToResponse();
 
                 logger.LogInformation("Successfully created board with ID {BoardId}. CorrelationId: {CorrelationId}", 
@@ -137,22 +143,27 @@ public static class EndpointExtensions
             [FromBody] GetFinalStateRequest request,
             IBoardService boardService,
             IValidator<GetFinalStateRequest> validator,
-            ILogger<IBoardService> logger) =>
+            ILogger<IBoardService> logger,
+            IOptions<GameOfLifeSettings> gameSettings) =>
         {
             var correlationId = System.Diagnostics.Activity.Current?.Id ?? Guid.NewGuid().ToString();
+            var settings = gameSettings.Value;
             
             try
             {
+                var maxIterations = request.MaxIterations ?? settings.DefaultMaxIterations;
+                var stableThreshold = request.StableStateThreshold ?? settings.DefaultStableStateThreshold;
+                
                 logger.LogInformation("Computing final state for board {BoardId} with max iterations {MaxIterations} and stable threshold {StableThreshold}. CorrelationId: {CorrelationId}", 
-                    request.BoardId, request.MaxIterations, request.StableStateThreshold, correlationId);
+                    request.BoardId, maxIterations, stableThreshold, correlationId);
 
                 var validationError = await ErrorHandling.ValidateRequest(request, validator);
                 if (validationError != null) return validationError;
 
                 var board = await boardService.GetFinalStateAsync(
                     new BoardId(request.BoardId),
-                    request.MaxIterations,
-                    request.StableStateThreshold);
+                    maxIterations,
+                    stableThreshold);
                 var response = board.ToResponse();
 
                 logger.LogInformation("Successfully computed final state for board {BoardId}, final generation {FinalGeneration}. CorrelationId: {CorrelationId}", 

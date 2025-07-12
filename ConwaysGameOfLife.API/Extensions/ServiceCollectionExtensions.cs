@@ -1,4 +1,5 @@
 using ConwaysGameOfLife.API.Configuration;
+using ConwaysGameOfLife.Domain.Configuration;
 using ConwaysGameOfLife.API.Services;
 using ConwaysGameOfLife.API.Validators;
 using ConwaysGameOfLife.Infrastructure;
@@ -18,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.Configure<DatabaseSettings>(configuration.GetSection(DatabaseSettings.SectionName));
         services.Configure<ConnectionPoolingSettings>(configuration.GetSection(ConnectionPoolingSettings.SectionName));
         services.Configure<LoggingSettings>(configuration.GetSection(LoggingSettings.SectionName));
+        services.Configure<GameOfLifeSettings>(configuration.GetSection(GameOfLifeSettings.SectionName));
 
         // Add telemetry
         services.AddTelemetry(configuration);

@@ -1,15 +1,17 @@
 using ConwaysGameOfLife.Domain.Entities;
 using ConwaysGameOfLife.Domain.ValueObjects;
+using ConwaysGameOfLife.Domain.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ConwaysGameOfLife.Domain.Services;
 
 public interface IBoardService
 {
-    Task<Board> CreateBoardAsync(IEnumerable<CellCoordinate> aliveCells, int maxDimension = 1000);
+    Task<Board> CreateBoardAsync(IEnumerable<CellCoordinate> aliveCells, int? maxDimension = null);
     Task<Board> GetNextStateAsync(BoardId boardId);
     Task<Board> GetStateAfterGenerationsAsync(BoardId boardId, int generations);
-    Task<Board> GetFinalStateAsync(BoardId boardId, int maxIterations = 1000, int stableStateThreshold = 20);
+    Task<Board> GetFinalStateAsync(BoardId boardId, int? maxIterations = null, int? stableStateThreshold = null);
 }
 
 public class BoardService : IBoardService
@@ -17,26 +19,30 @@ public class BoardService : IBoardService
     private readonly IBoardRepository _boardRepository;
     private readonly IBoardHistoryRepository _boardHistoryRepository;
     private readonly ILogger<BoardService> _logger;
+    private readonly GameOfLifeSettings _settings;
 
     public BoardService(
         IBoardRepository boardRepository, 
         IBoardHistoryRepository boardHistoryRepository,
-        ILogger<BoardService> logger)
+        ILogger<BoardService> logger,
+        IOptions<GameOfLifeSettings> settings)
     {
         _boardRepository = boardRepository;
         _boardHistoryRepository = boardHistoryRepository;
         _logger = logger;
+        _settings = settings.Value;
     }
 
-    public async Task<Board> CreateBoardAsync(IEnumerable<CellCoordinate> aliveCells, int maxDimension = 1000)
+    public async Task<Board> CreateBoardAsync(IEnumerable<CellCoordinate> aliveCells, int? maxDimension = null)
     {
         var boardId = BoardId.NewId();
         var aliveCellsList = aliveCells.ToList();
+        var actualMaxDimension = maxDimension ?? _settings.DefaultMaxDimension;
         
         _logger.LogInformation("Creating new board {BoardId} with {AliveCellCount} alive cells and max dimension {MaxDimension}", 
-            boardId.Value, aliveCellsList.Count, maxDimension);
+            boardId.Value, aliveCellsList.Count, actualMaxDimension);
         
-        var board = new Board(boardId, aliveCellsList, maxDimension);
+        var board = new Board(boardId, aliveCellsList, actualMaxDimension);
         
         try
         {
@@ -113,7 +119,7 @@ public class BoardService : IBoardService
                 await _boardHistoryRepository.SaveAsync(new BoardHistory(currentBoard.Id, currentBoard.Generation, currentBoard.AliveCells));
                 
                 // Log progress for long-running operations
-                if (i > 0 && (i + 1) % 100 == 0)
+                if (i > 0 && (i + 1) % _settings.ProgressLoggingInterval == 0)
                 {
                     _logger.LogInformation("Progress: computed {CompletedGenerations}/{TotalGenerations} generations for board {BoardId}", 
                         i + 1, generations, boardId.Value);
@@ -135,10 +141,13 @@ public class BoardService : IBoardService
         }
     }
 
-    public async Task<Board> GetFinalStateAsync(BoardId boardId, int maxIterations = 1000, int stableStateThreshold = 20)
+    public async Task<Board> GetFinalStateAsync(BoardId boardId, int? maxIterations = null, int? stableStateThreshold = null)
     {
+        var actualMaxIterations = maxIterations ?? _settings.DefaultMaxIterations;
+        var actualStableThreshold = stableStateThreshold ?? _settings.DefaultStableStateThreshold;
+        
         _logger.LogInformation("Computing final state for board {BoardId} with max iterations {MaxIterations} and stable threshold {StableThreshold}", 
-            boardId.Value, maxIterations, stableStateThreshold);
+            boardId.Value, actualMaxIterations, actualStableThreshold);
 
         var board = await _boardRepository.GetByIdAsync(boardId);
         if (board == null)
@@ -153,22 +162,22 @@ public class BoardService : IBoardService
         
         try
         {
-            for (int iteration = 0; iteration < maxIterations; iteration++)
+            for (int iteration = 0; iteration < actualMaxIterations; iteration++)
             {
                 var stateHash = currentBoard.GetStateHash();
                 stateHistory.Add(stateHash);
                 
                 // Log progress for long-running operations
-                if (iteration > 0 && (iteration + 1) % 100 == 0)
+                if (iteration > 0 && (iteration + 1) % _settings.ProgressLoggingInterval == 0)
                 {
                     _logger.LogDebug("Final state progress: iteration {Iteration}/{MaxIterations} for board {BoardId}, generation {Generation}", 
-                        iteration + 1, maxIterations, boardId.Value, currentBoard.Generation);
+                        iteration + 1, actualMaxIterations, boardId.Value, currentBoard.Generation);
                 }
                 
                 // Check for stability (same state)
-                if (stateHistory.Count >= stableStateThreshold)
+                if (stateHistory.Count >= actualStableThreshold)
                 {
-                    var recentStates = stateHistory.TakeLast(stableStateThreshold);
+                    var recentStates = stateHistory.TakeLast(actualStableThreshold);
                     if (recentStates.All(s => s == stateHash))
                     {
                         await _boardRepository.SaveAsync(currentBoard);
@@ -182,7 +191,7 @@ public class BoardService : IBoardService
                 if (stateHistory.Count >= 4)
                 {
                     var cycleLength = DetectCycle(stateHistory);
-                    if (cycleLength > 0 && HasStableCycle(stateHistory, cycleLength, stableStateThreshold))
+                    if (cycleLength > 0 && HasStableCycle(stateHistory, cycleLength, actualStableThreshold))
                     {
                         await _boardRepository.SaveAsync(currentBoard);
                         _logger.LogInformation("Stable cycle (length {CycleLength}) found for board {BoardId} at generation {Generation} after {Iterations} iterations", 
@@ -208,9 +217,9 @@ public class BoardService : IBoardService
             await _boardRepository.SaveAsync(currentBoard);
             
             _logger.LogWarning("Board {BoardId} did not reach a stable state within {MaxIterations} iterations. Final generation: {FinalGeneration}", 
-                boardId.Value, maxIterations, currentBoard.Generation);
+                boardId.Value, actualMaxIterations, currentBoard.Generation);
             
-            throw new InvalidOperationException($"Board did not reach a stable state within {maxIterations} iterations");
+            throw new InvalidOperationException($"Board did not reach a stable state within {actualMaxIterations} iterations");
         }
         catch (Exception ex) when (!(ex is InvalidOperationException))
         {
@@ -219,11 +228,11 @@ public class BoardService : IBoardService
         }
     }
 
-    private static int DetectCycle(List<string> stateHistory)
+    private int DetectCycle(List<string> stateHistory)
     {
         var currentState = stateHistory.Last();
         
-        for (int cycleLength = 1; cycleLength <= Math.Min(10, stateHistory.Count / 2); cycleLength++)
+        for (int cycleLength = 1; cycleLength <= Math.Min(_settings.MaxCycleDetectionLength, stateHistory.Count / 2); cycleLength++)
         {
             if (stateHistory.Count < cycleLength * 2) continue;
             
@@ -243,11 +252,11 @@ public class BoardService : IBoardService
         return 0;
     }
 
-    private static bool HasStableCycle(List<string> stateHistory, int cycleLength, int stableThreshold)
+    private bool HasStableCycle(List<string> stateHistory, int cycleLength, int stableThreshold)
     {
-        if (stateHistory.Count < cycleLength * stableThreshold) return false;
+        if (stateHistory.Count < cycleLength * _settings.CycleStabilityRequirement) return false;
         
-        var cyclesToCheck = Math.Min(stableThreshold, stateHistory.Count / cycleLength);
+        var cyclesToCheck = Math.Min(_settings.CycleStabilityRequirement, stateHistory.Count / cycleLength);
         
         for (int cycle = 0; cycle < cyclesToCheck; cycle++)
         {

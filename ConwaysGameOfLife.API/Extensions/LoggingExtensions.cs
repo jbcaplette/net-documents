@@ -103,19 +103,19 @@ public static class LoggingExtensions
     {
         diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
         diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
-        diagnosticContext.Set("RemoteIpAddress", httpContext.Connection.RemoteIpAddress?.ToString());
-        diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent);
+        diagnosticContext.Set("RemoteIpAddress", httpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown");
+        diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString() ?? "Unknown");
         diagnosticContext.Set("CorrelationId", Activity.Current?.Id ?? httpContext.TraceIdentifier);
         
         if (httpContext.User.Identity?.IsAuthenticated == true)
         {
-            diagnosticContext.Set("UserId", httpContext.User.Identity.Name);
+            diagnosticContext.Set("UserId", httpContext.User.Identity.Name ?? "Unknown");
         }
 
         // Add custom properties for Game of Life specific context
         if (httpContext.Request.RouteValues.TryGetValue("boardId", out var boardId))
         {
-            diagnosticContext.Set("BoardId", boardId);
+            diagnosticContext.Set("BoardId", boardId ?? "Unknown");
         }
     }
 }

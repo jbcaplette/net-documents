@@ -1,7 +1,9 @@
 using ConwaysGameOfLife.Domain.Entities;
 using ConwaysGameOfLife.Domain.Services;
 using ConwaysGameOfLife.Domain.ValueObjects;
+using ConwaysGameOfLife.Domain.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ConwaysGameOfLife.Tests.Domain.Services;
 
@@ -10,6 +12,7 @@ public class BoardServiceTests
     private readonly Mock<IBoardRepository> _mockBoardRepository;
     private readonly Mock<IBoardHistoryRepository> _mockBoardHistoryRepository;
     private readonly Mock<ILogger<BoardService>> _mockLogger;
+    private readonly Mock<IOptions<GameOfLifeSettings>> _mockSettings;
     private readonly BoardService _boardService;
 
     public BoardServiceTests()
@@ -17,7 +20,24 @@ public class BoardServiceTests
         _mockBoardRepository = new Mock<IBoardRepository>();
         _mockBoardHistoryRepository = new Mock<IBoardHistoryRepository>();
         _mockLogger = new Mock<ILogger<BoardService>>();
-        _boardService = new BoardService(_mockBoardRepository.Object, _mockBoardHistoryRepository.Object, _mockLogger.Object);
+        _mockSettings = new Mock<IOptions<GameOfLifeSettings>>();
+        
+        // Setup default settings
+        _mockSettings.Setup(x => x.Value).Returns(new GameOfLifeSettings
+        {
+            DefaultMaxDimension = 1000,
+            DefaultMaxIterations = 1000,
+            DefaultStableStateThreshold = 20,
+            ProgressLoggingInterval = 100,
+            MaxCycleDetectionLength = 10,
+            CycleStabilityRequirement = 3
+        });
+        
+        _boardService = new BoardService(
+            _mockBoardRepository.Object, 
+            _mockBoardHistoryRepository.Object, 
+            _mockLogger.Object,
+            _mockSettings.Object);
     }
 
     [Fact]
@@ -41,6 +61,23 @@ public class BoardServiceTests
         result.MaxDimension.Should().Be(maxDimension);
         result.Generation.Should().Be(0);
 
+        _mockBoardRepository.Verify(x => x.SaveAsync(It.IsAny<Board>()), Times.Once);
+        _mockBoardHistoryRepository.Verify(x => x.SaveAsync(It.IsAny<BoardHistory>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateBoardAsync_WithNullMaxDimension_ShouldUseDefaultFromSettings()
+    {
+        // Arrange
+        var aliveCells = new[] { new CellCoordinate(1, 1) };
+
+        // Act
+        var result = await _boardService.CreateBoardAsync(aliveCells, null);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.MaxDimension.Should().Be(1000); // Default from settings
+        
         _mockBoardRepository.Verify(x => x.SaveAsync(It.IsAny<Board>()), Times.Once);
         _mockBoardHistoryRepository.Verify(x => x.SaveAsync(It.IsAny<BoardHistory>()), Times.Once);
     }

@@ -1,4 +1,6 @@
 using ConwaysGameOfLife.Domain.ValueObjects;
+using ConwaysGameOfLife.Domain.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace ConwaysGameOfLife.API.Models;
 
@@ -7,7 +9,7 @@ namespace ConwaysGameOfLife.API.Models;
 public record UploadBoardRequest
 {
     public required IEnumerable<CellCoordinateDto> AliveCells { get; init; }
-    public int MaxDimension { get; init; } = 1000;
+    public int? MaxDimension { get; init; }
 }
 
 public record CellCoordinateDto
@@ -44,8 +46,8 @@ public record GetNStatesAheadRequest
 public record GetFinalStateRequest
 {
     public required Guid BoardId { get; init; }
-    public int MaxIterations { get; init; } = 1000;
-    public int StableStateThreshold { get; init; } = 20;
+    public int? MaxIterations { get; init; }
+    public int? StableStateThreshold { get; init; }
 }
 
 public record ErrorResponse
