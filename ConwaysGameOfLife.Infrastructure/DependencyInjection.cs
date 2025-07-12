@@ -15,8 +15,9 @@ public static class DependencyInjection
         IConfiguration? configuration = null)
     {
         // Determine if we should use connection pooling (avoid in test environments)
+        var environmentService = new EnvironmentService(configuration);
         var useConnectionPooling = configuration?.GetValue<bool>("Database:UseConnectionPooling") ?? true;
-        var isTestEnvironment = configuration?.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Test" ||
+        var isTestEnvironment = environmentService.IsTest ||
                                connectionString.Contains("InMemoryDatabase", StringComparison.OrdinalIgnoreCase);
 
         if (useConnectionPooling && !isTestEnvironment)
@@ -47,12 +48,18 @@ public static class DependencyInjection
         string connectionString, 
         IConfiguration? configuration)
     {
+        var environmentService = new EnvironmentService(configuration);
+        
         options.UseSqlite(connectionString, sqliteOptions =>
         {
             var commandTimeout = configuration?.GetValue<int>("Database:CommandTimeout") ?? 30;
             sqliteOptions.CommandTimeout(commandTimeout);
         });
 
+        // Performance optimizations
+        options.EnableSensitiveDataLogging(false); // Disable for production performance
+        options.EnableDetailedErrors(false); // Disable for production performance
+        
         // Configure based on settings
         if (configuration != null)
         {
@@ -69,12 +76,17 @@ public static class DependencyInjection
                 options.EnableDetailedErrors();
             }
 
-            // Use Serilog for EF Core logging instead of Debug.WriteLine
-            options.LogTo(message => 
+            // Only enable logging in development using the environment service
+            if (environmentService.ShouldEnableLogging)
             {
-                // This will be picked up by Serilog through the ILogger infrastructure
-                System.Diagnostics.Debug.WriteLine(message);
-            }, LogLevel.Information);
+                options.LogTo(message => 
+                {
+                    System.Diagnostics.Debug.WriteLine(message);
+                }, LogLevel.Information);
+            }
         }
+
+        // Performance configurations
+        options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.SensitiveDataLoggingEnabledWarning));
     }
 }

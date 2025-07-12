@@ -13,6 +13,8 @@ public interface IBoardRepository
 public interface IBoardHistoryRepository
 {
     Task SaveAsync(BoardHistory boardHistory);
+    Task SaveBatchAsync(IEnumerable<BoardHistory> boardHistories);
     Task<IEnumerable<BoardHistory>> GetHistoryAsync(BoardId boardId);
     Task<BoardHistory?> GetByGenerationAsync(BoardId boardId, int generation);
+    Task<bool> HasCycleAsync(BoardId boardId, string stateHash, int generationThreshold);
 }

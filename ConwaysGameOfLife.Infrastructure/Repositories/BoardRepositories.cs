@@ -3,6 +3,7 @@ using ConwaysGameOfLife.Domain.Services;
 using ConwaysGameOfLife.Domain.ValueObjects;
 using ConwaysGameOfLife.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace ConwaysGameOfLife.Infrastructure.Repositories;
 
@@ -53,9 +54,18 @@ public class BoardRepository : IBoardRepository
         }
         else
         {
-            existingEntity.Generation = board.Generation;
-            existingEntity.LastUpdatedAt = DateTime.UtcNow;
-            existingEntity.SetAliveCells(board.AliveCells);
+            // Prepare the JSON outside of the expression tree
+            var aliveCellsJson = JsonConvert.SerializeObject(
+                board.AliveCells.Select(c => new { X = c.X, Y = c.Y }).ToArray());
+            
+            // Use ExecuteUpdate for better performance on updates
+            await _context.Boards
+                .Where(b => b.Id == board.Id)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(b => b.Generation, board.Generation)
+                    .SetProperty(b => b.LastUpdatedAt, DateTime.UtcNow)
+                    .SetProperty(b => b.AliveCellsJson, aliveCellsJson));
+            return; // Skip SaveChangesAsync when using ExecuteUpdate
         }
 
         await _context.SaveChangesAsync();
@@ -91,11 +101,31 @@ public class BoardHistoryRepository : IBoardHistoryRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task SaveBatchAsync(IEnumerable<BoardHistory> boardHistories)
+    {
+        var entities = boardHistories.Select(bh => 
+        {
+            var entity = new BoardHistoryEntity
+            {
+                BoardId = bh.BoardId,
+                Generation = bh.Generation,
+                StateHash = bh.StateHash,
+                CreatedAt = bh.CreatedAt
+            };
+            entity.SetAliveCells(bh.AliveCells);
+            return entity;
+        }).ToList();
+
+        _context.BoardHistories.AddRange(entities);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<IEnumerable<BoardHistory>> GetHistoryAsync(BoardId boardId)
     {
         var entities = await _context.BoardHistories
             .Where(bh => bh.BoardId == boardId)
             .OrderBy(bh => bh.Generation)
+            .AsNoTracking()
             .ToListAsync();
 
         return entities.Select(e => new BoardHistory(e.BoardId, e.Generation, e.GetAliveCells().ToHashSet()));
@@ -104,10 +134,20 @@ public class BoardHistoryRepository : IBoardHistoryRepository
     public async Task<BoardHistory?> GetByGenerationAsync(BoardId boardId, int generation)
     {
         var entity = await _context.BoardHistories
+            .AsNoTracking()
             .FirstOrDefaultAsync(bh => bh.BoardId == boardId && bh.Generation == generation);
 
         if (entity == null) return null;
 
         return new BoardHistory(entity.BoardId, entity.Generation, entity.GetAliveCells().ToHashSet());
+    }
+
+    public async Task<bool> HasCycleAsync(BoardId boardId, string stateHash, int generationThreshold)
+    {
+        return await _context.BoardHistories
+            .Where(bh => bh.BoardId == boardId && 
+                        bh.StateHash == stateHash && 
+                        bh.Generation <= generationThreshold)
+            .AnyAsync();
     }
 }

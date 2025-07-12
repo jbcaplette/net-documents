@@ -8,6 +8,9 @@ public class GameOfLifeDbContext : DbContext
 {
     public GameOfLifeDbContext(DbContextOptions<GameOfLifeDbContext> options) : base(options)
     {
+        // Optimize for performance
+        ChangeTracker.AutoDetectChangesEnabled = false;
+        ChangeTracker.LazyLoadingEnabled = false;
     }
 
     public DbSet<BoardEntity> Boards { get; set; } = null!;
@@ -55,8 +58,17 @@ public class GameOfLifeDbContext : DbContext
             entity.Property(e => e.StateHash).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
 
+            // Performance-oriented indexes
             entity.HasIndex(e => e.BoardId);
             entity.HasIndex(e => e.StateHash);
+            entity.HasIndex(e => new { e.BoardId, e.StateHash }); // Composite index for cycle detection
         });
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        // Manually detect changes for better performance control
+        ChangeTracker.DetectChanges();
+        return base.SaveChangesAsync(cancellationToken);
     }
 }

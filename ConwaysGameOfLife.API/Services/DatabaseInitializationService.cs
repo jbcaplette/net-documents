@@ -1,3 +1,4 @@
+using ConwaysGameOfLife.Domain.Services;
 using ConwaysGameOfLife.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,16 +8,16 @@ public class DatabaseInitializationService : IHostedService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<DatabaseInitializationService> _logger;
-    private readonly IWebHostEnvironment _environment;
+    private readonly IEnvironmentService _environmentService;
 
     public DatabaseInitializationService(
         IServiceProvider serviceProvider,
         ILogger<DatabaseInitializationService> logger,
-        IWebHostEnvironment environment)
+        IEnvironmentService environmentService)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _environment = environment;
+        _environmentService = environmentService;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -29,7 +30,7 @@ public class DatabaseInitializationService : IHostedService
             _logger.LogInformation("Ensuring database is created...");
             
             // Use migrations in production, EnsureCreated in development
-            if (_environment.IsDevelopment())
+            if (_environmentService.IsDevelopment)
             {
                 await context.Database.EnsureCreatedAsync(cancellationToken);
                 _logger.LogInformation("Database ensured in development mode");
