@@ -459,3 +459,5 @@ logs/
 *.nupkg
 *.snupkg
 This updated `.gitignore` file now includes a comprehensive list of exclusions for .NET 8 projects, covering common build artifacts, dependencies, and temporary files. It also retains the original exclusions for the `/vs` and `/ConwaysGameOfLife.API/obj` directories. The file is properly formatted and ready for use. Let me know if you need further assistance! 
+/ConwaysGameOfLife.API/gameoflife-dev.db-shm
+/ConwaysGameOfLife.API/gameoflife-dev.db-wal

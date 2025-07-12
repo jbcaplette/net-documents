@@ -36,6 +36,9 @@ public static class ServiceCollectionExtensions
         
         services.AddInfrastructure(connectionString, configuration);
 
+        // Add database initialization service
+        services.AddHostedService<DatabaseInitializationService>();
+
         return services;
     }
 

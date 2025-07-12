@@ -50,8 +50,8 @@ public class GetNStatesAheadRequestValidator : AbstractValidator<GetNStatesAhead
             .WithMessage("Board ID cannot be empty");
 
         RuleFor(x => x.Generations)
-            .GreaterThanOrEqualTo(0)
-            .WithMessage("Generations must be non-negative")
+            .GreaterThan(0)
+            .WithMessage("Generations must be 1 or more")
             .LessThanOrEqualTo(10000)
             .WithMessage("Cannot generate more than 10,000 generations at once for performance reasons");
     }

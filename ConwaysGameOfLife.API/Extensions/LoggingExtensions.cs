@@ -15,58 +15,13 @@ public static class LoggingExtensions
 
         Log.Logger = new LoggerConfiguration()
             .ReadFrom.Configuration(configuration)
-            .ConfigureForEnvironment(environment)
+            .Enrich.WithProperty("Version", GetApplicationVersion())
             .CreateLogger();
 
         // Replace default logging with Serilog
         builder.Host.UseSerilog();
 
         return builder;
-    }
-
-    private static LoggerConfiguration ConfigureForEnvironment(this LoggerConfiguration loggerConfig, IWebHostEnvironment environment)
-    {
-        var baseConfig = loggerConfig
-            .Enrich.FromLogContext()
-            .Enrich.WithMachineName()
-            .Enrich.WithEnvironmentName()
-            .Enrich.WithProcessId()
-            .Enrich.WithThreadId()
-            .Enrich.WithProperty("Application", "ConwaysGameOfLife.API")
-            .Enrich.WithProperty("Version", GetApplicationVersion());
-
-        if (environment.IsDevelopment())
-        {
-            return baseConfig
-                .MinimumLevel.Debug()
-                .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Information)
-                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Information)
-                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
-                .WriteTo.File(
-                    path: "logs/development/conways-game-of-life-.txt",
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 7,
-                    fileSizeLimitBytes: 10 * 1024 * 1024, // 10MB
-                    rollOnFileSizeLimit: true,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}: {Message:lj} {Properties:j}{NewLine}{Exception}");
-        }
-        else
-        {
-            return baseConfig
-                .MinimumLevel.Information()
-                .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
-                .MinimumLevel.Override("System", LogEventLevel.Warning)
-                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-                .WriteTo.File(
-                    path: "logs/production/conways-game-of-life-.txt",
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 30,
-                    fileSizeLimitBytes: 50 * 1024 * 1024, // 50MB
-                    rollOnFileSizeLimit: true,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}: {Message:lj} {Properties:j}{NewLine}{Exception}");
-        }
     }
 
     private static string GetApplicationVersion()

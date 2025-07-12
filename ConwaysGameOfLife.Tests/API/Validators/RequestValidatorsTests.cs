@@ -228,7 +228,7 @@ public class RequestValidatorsTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Generations must be non-negative"));
+        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Generations must be 1 or more"));
     }
 
     [Fact]
