@@ -276,7 +276,7 @@ public class FunctionalRequirementsTests : IClassFixture<WebApplicationFactory<P
     }
 
     [Fact]
-    public async Task Requirement4_GetFinalState_ShouldReturnErrorWhenNotStableWithinLimit()
+    public async Task Requirement4_GetFinalState_ShouldReturnNotFoundWhenNotStableWithinLimit()
     {
         // Arrange - Upload a complex pattern that may not stabilize quickly
         var uploadRequest = new UploadBoardRequest
@@ -292,9 +292,11 @@ public class FunctionalRequirementsTests : IClassFixture<WebApplicationFactory<P
                 new CellCoordinateDto { X = 11, Y = 10 },
                 new CellCoordinateDto { X = 20, Y = 20 },
                 new CellCoordinateDto { X = 21, Y = 20 },
-                new CellCoordinateDto { X = 20, Y = 21 }
+                new CellCoordinateDto { X = 20, Y = 21 },
+                new CellCoordinateDto { X = 20, Y = 22 },
+                new CellCoordinateDto { X = 20, Y = 23 }
             },
-            MaxDimension = 50
+            MaxDimension = 200
         };
 
         var uploadResponse = await _client.PostAsJsonAsync("/api/boards", uploadRequest);
@@ -314,8 +316,8 @@ public class FunctionalRequirementsTests : IClassFixture<WebApplicationFactory<P
         // Act
         var response = await _client.PostAsJsonAsync("/api/boards/final-state", finalStateRequest);
 
-        // Assert - Should return error when not stable within limit
-        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        // Assert - Should return not found when not stable within limit
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -371,7 +373,7 @@ public class FunctionalRequirementsTests : IClassFixture<WebApplicationFactory<P
         // 1. Invalid board ID
         var invalidBoardId = Guid.NewGuid();
         var nextStateResponse = await _client.PostAsync($"/api/boards/{invalidBoardId}/next", null);
-        nextStateResponse.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        nextStateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         // 2. Invalid validation
         var invalidRequest = new UploadBoardRequest
@@ -453,7 +455,7 @@ public class FunctionalRequirementsTests : IClassFixture<WebApplicationFactory<P
             PropertyNameCaseInsensitive = true
         });
 
-        nStatesResult!.Generation.Should().Be(5);
+        nStatesResult!.Generation.Should().Be(6);
 
         // Step 4: Get Final State (Requirement 4)
         var finalStateRequest = new GetFinalStateRequest

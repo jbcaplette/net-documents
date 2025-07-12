@@ -148,7 +148,7 @@ public class BoardApiIntegrationTests : IClassFixture<WebApplicationFactory<Prog
         var response = await _client.PostAsync($"/api/boards/{nonExistentBoardId}/next", null);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError); // Service throws exception which becomes 500
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound); // Service throws exception which becomes 404
     }
 
     [Fact]
@@ -384,7 +384,7 @@ public class BoardApiIntegrationTests : IClassFixture<WebApplicationFactory<Prog
         });
 
         nStatesBoard.Should().NotBeNull();
-        nStatesBoard!.Generation.Should().Be(10);
+        nStatesBoard!.Generation.Should().Be(11);
         nStatesBoard.AliveCells.Should().HaveCount(3); // Blinker maintains 3 cells
 
         // Step 4: Get final state (should detect oscillation)

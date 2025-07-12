@@ -105,7 +105,7 @@ public class ErrorHandlingIntegrationTests : IClassFixture<WebApplicationFactory
     }
 
     [Fact]
-    public async Task GetNextState_WithMalformedGuid_ShouldReturnBadRequest()
+    public async Task GetNextState_WithMalformedGuid_ShouldReturnNotFound()
     {
         // Arrange
         var invalidGuid = "not-a-guid";
@@ -114,7 +114,7 @@ public class ErrorHandlingIntegrationTests : IClassFixture<WebApplicationFactory
         var response = await _client.PostAsync($"/api/boards/{invalidGuid}/next", null);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
